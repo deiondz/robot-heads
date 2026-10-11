@@ -46,8 +46,8 @@ Each state has its own face on the screen, its own motion and its own antenna li
 | `idle` | block eyes that blink and glance | looks around, hops now and then |
 | `thinking` | heavy-lidded eyes looking up, three pulsing dots | head tilted up, switching sides; amber light pulses |
 | `searching` | darting eyes, a beam sweeping the whole screen | head sweeps side to side; cyan beacon |
-| `listening` | alert eyes over a live equaliser | head cocked, small nods; steady green light |
-| `speaking` | a mouth that moves with the words | bobs as it talks |
+| `listening` | alert eyes over an equaliser that hears phrases, each vowel its own shape | head cocked, leaning in as the voice rises, a nod as each phrase ends; green light that follows the voice |
+| `speaking` | a mouth that shapes each syllable (wide, tall or round), pausing between words and phrases; eyes lift on stressed syllables | turns to someone new each phrase, bobbing with the jaw; light that follows the voice |
 | `working` | focused eyes looking down, a progress bar | busy bobbing, a hop with a spin now and then |
 | `happy` | `^ ^` eyes and a smile | bouncy hops |
 | `error` | red `X X` eyes | shakes its head; red light blinks |
@@ -95,8 +95,8 @@ Its motion is not part of that box. Hops, the antenna's glow and the floor's sha
   | `idle` | a soft tick on each blink |
   | `thinking` | a questioning chime each time it tilts its head |
   | `searching` | a sweep with each pass of the beam |
-  | `listening` | a rising blip with each nod |
-  | `speaking` | babble, a pitched pluck per syllable |
+  | `listening` | a rising blip as it nods at the end of each phrase |
+  | `speaking` | babble, a pitched pluck per syllable, stressed ones louder |
   | `working` | a tick per progress segment, a chime as the bar fills |
   | `happy` | a bright pep on each bounce |
   | `error` | a buzz with each shake of the head |

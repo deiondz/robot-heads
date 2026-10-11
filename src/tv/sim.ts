@@ -5,7 +5,8 @@
    wobbly spring of its own, shaken by whatever the head does. */
 
 import type { RobotHeadCue, RobotHeadState } from '../types';
-import type { FaceParams } from './faces';
+import { HEARD, type FaceParams } from './faces';
+import { hash, voice } from './voice';
 
 class Spring {
   x = 0;
@@ -102,6 +103,8 @@ export class RobotSim {
   /* the state's beat counter, so each beat cues once; -1 cues the first at once */
   private lastBeat = -1;
   private flips = 0;
+  /* listening: whether the voice it hears was mid-phrase last step */
+  private hearing = false;
 
   constructor(seed: number, state: RobotHeadState) {
     this.random = rng(seed);
@@ -117,6 +120,7 @@ export class RobotSim {
     this.state = s;
     this.since = 0;
     this.lastBeat = -1;
+    this.hearing = false;
     this.nextLook = 0;
     this.nextHop = this.time + (s === 'happy' ? 0.2 : 3 + this.random() * 4);
     if (s === 'happy') this.hop(0.22, 1);
@@ -152,11 +156,11 @@ export class RobotSim {
         if (this.lastBeat < 0) this.lastBeat = beat;
         break;
       case 'speaking': {
-        /* syllables, while the mouth's phrase envelope is open */
-        const env = Math.sin(s * 2.1) * 0.5 + Math.sin(s * 3.7 + 1) * 0.5;
-        const syllable = Math.floor(s * 5);
-        if (env < 0.25) this.lastBeat = syllable;
-        beat = syllable;
+        /* each syllable the mouth opens on, accented where stressed */
+        const v = voice(s, this.face.seed);
+        if (v.syllable < 0) break;
+        beat = v.syllable;
+        accent = v.stress;
         break;
       }
       case 'working':
@@ -253,23 +257,31 @@ export class RobotSim {
         break;
       }
       case 'listening': {
-        yaw = -0.14;
-        pitch = 0.02;
-        roll = 0.17;
-        if (t > this.nextNod) {
+        /* cocked, leaning in a touch as the voice gets louder, and a nod as
+           each phrase it hears comes to an end */
+        const heard = voice(this.since, this.face.seed + HEARD);
+        yaw = -0.14 + Math.sin(t * 0.6) * 0.03;
+        pitch = 0.02 + heard.open * 0.04;
+        roll = 0.17 + Math.sin(t * 0.45) * 0.03;
+        if (this.hearing && !heard.talking) {
           this.pitch.v -= 0.9;
           this.flips++;
-          this.nextNod = t + 2 + rand() * 2.5;
         }
+        this.hearing = heard.talking;
         break;
       }
-      case 'speaking':
-        yaw = Math.sin(t * 0.7) * 0.12;
-        pitch = 0.03 + Math.sin(t * 6.3) * 0.025 * (0.5 + 0.5 * Math.sin(t * 2.1));
-        roll = Math.sin(t * 0.9) * 0.05;
-        bob += Math.abs(Math.sin(t * 6.3)) * 0.01;
+      case 'speaking': {
+        /* turned to someone new each phrase, the head riding the jaw, a dip
+           on each stressed syllable */
+        const v = voice(this.since, this.face.seed);
+        const turn = hash(v.phrase, 5, this.face.seed) - 0.5;
+        yaw = turn * 0.34 + Math.sin(t * 0.7) * 0.04;
+        pitch = 0.02 + v.open * 0.035 + (v.stress ? v.open * 0.03 : 0);
+        roll = -turn * 0.08 + Math.sin(t * 0.9) * 0.03;
+        bob += v.open * 0.01;
         freq = 1.8;
         break;
+      }
       case 'working':
         yaw = Math.sin(t * 0.8) * 0.08;
         pitch = -0.16;

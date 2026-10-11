@@ -151,9 +151,10 @@ export class SoundPlayer {
           this.play(FILLED);
           break;
         }
-        /* speech: each syllable pitched a little differently */
-        const rate = cue.state === 'speaking' ? 0.85 + Math.random() * 0.6 : 1;
-        this.play(this.voice(cue.state), 1, rate);
+        /* speech: each syllable pitched a little differently, stressed ones louder and higher */
+        const speech = cue.state === 'speaking';
+        const rate = speech ? 0.85 + Math.random() * 0.5 + (cue.accent ? 0.15 : 0) : 1;
+        this.play(this.voice(cue.state), speech && cue.accent ? 1.3 : 1, rate);
         break;
       }
       case 'breath':
