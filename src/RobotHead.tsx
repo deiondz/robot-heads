@@ -65,6 +65,7 @@ export const RobotHead = forwardRef<HTMLCanvasElement, RobotHeadProps>(function 
     interactive = true,
     floorShadow = true,
     antenna = true,
+    onCue,
     seed,
     className,
     style,
@@ -96,6 +97,8 @@ export const RobotHead = forwardRef<HTMLCanvasElement, RobotHeadProps>(function 
   shadowRef.current = floorShadow;
   const antennaRef = useRef(antenna);
   antennaRef.current = antenna;
+  const onCueRef = useRef(onCue);
+  onCueRef.current = onCue;
 
   if (!sim.current) sim.current = new RobotSim(seedValue, stateKey);
   sim.current.setState(stateKey);
@@ -125,6 +128,8 @@ export const RobotHead = forwardRef<HTMLCanvasElement, RobotHeadProps>(function 
   useEffect(() => {
     if (still || reducedMotion()) {
       paint(false);
+      /* a still head is quiet, and doesn't catch up on what it missed */
+      sim.current!.cues.length = 0;
       return;
     }
     return subscribe((dt) => {
@@ -140,6 +145,7 @@ export const RobotHead = forwardRef<HTMLCanvasElement, RobotHeadProps>(function 
       } else s.pointer = null;
       s.update(dt * speedRef.current);
       paint(true);
+      if (s.cues.length) for (const cue of s.cues.splice(0)) onCueRef.current?.(cue);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [still, size, stateKey, shapeKey, color, trimColor, screenColor, floorShadow, antenna]);

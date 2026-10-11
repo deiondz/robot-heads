@@ -12,6 +12,17 @@ export type RobotHeadState =
   | 'error'
   | 'sleeping';
 
+/**
+ * A moment in the animation, handed to `onCue`: a state switch, a hop
+ * (`poked` when a click set it off), a landing, or a sleeping head's breath
+ * turning over (`out` on the out-breath, as the head sinks).
+ */
+export type RobotHeadCue =
+  | { type: 'state'; state: RobotHeadState; previous: RobotHeadState }
+  | { type: 'hop'; poked: boolean }
+  | { type: 'land' }
+  | { type: 'breath'; out: boolean };
+
 /** The head's build. Only the TV head so far. */
 export type RobotHeadModel = 'tv';
 
@@ -52,6 +63,12 @@ export interface RobotHeadProps extends Omit<HTMLAttributes<HTMLSpanElement>, 'c
   antenna?: boolean;
   /** Draw the soft shadow on the floor under the head. Default `true`. */
   floorShadow?: boolean;
+  /**
+   * Called with each moment in the animation, on the frame it happens: for
+   * sound effects, or anything else that should keep time with the head.
+   * Silent while paused or under reduced motion.
+   */
+  onCue?: (cue: RobotHeadCue) => void;
   /** 0–1, offsets the blinks and glances so a row of heads does not move in unison. */
   seed?: number;
   className?: string;

@@ -4,7 +4,7 @@
    with an optional full turn, a landing squash), and the antenna is a
    wobbly spring of its own, shaken by whatever the head does. */
 
-import type { RobotHeadState } from '../types';
+import type { RobotHeadCue, RobotHeadState } from '../types';
 import type { FaceParams } from './faces';
 
 class Spring {
@@ -45,6 +45,9 @@ interface Jump {
 
 const CROUCH = 0.11;
 
+/** The sleeping head's breath, in radians a second: its bob rises on the in-breath and falls on the out-breath. */
+export const SLEEP_BREATH = 1.15;
+
 export interface RobotPose {
   yaw: number;
   pitch: number;
@@ -74,6 +77,8 @@ export class RobotSim {
   face: FaceParams;
   /* the pointer, relative to the head's centre in CSS px, or null */
   pointer: { x: number; y: number } | null = null;
+  /* moments since the last frame, for the component to hand to onCue */
+  cues: RobotHeadCue[] = [];
 
   private yaw = new Spring();
   private pitch = new Spring();
@@ -93,6 +98,7 @@ export class RobotSim {
   private nextSide = 4;
   private reactUntil = -1;
   private nextNod = 2.5;
+  private exhaling = false;
 
   constructor(seed: number, state: RobotHeadState) {
     this.random = rng(seed);
@@ -104,6 +110,7 @@ export class RobotSim {
 
   setState(s: RobotHeadState) {
     if (s === this.state) return;
+    this.cues.push({ type: 'state', state: s, previous: this.state });
     this.state = s;
     this.since = 0;
     this.nextLook = 0;
@@ -113,12 +120,13 @@ export class RobotSim {
 
   /** A click: a hop with a full turn and a happy face. */
   poke() {
-    this.hop(0.24, this.random() < 0.5 ? 1 : -1);
+    this.hop(0.24, this.random() < 0.5 ? 1 : -1, true);
     this.reactUntil = this.time + 1.6;
   }
 
-  hop(height: number, spin: number) {
+  hop(height: number, spin: number, poked = false) {
     if (this.jump) return;
+    this.cues.push({ type: 'hop', poked });
     this.jump = { age: 0, height, spin, lean: (this.random() - 0.5) * 0.3, air: 0.42 + height * 0.45, landed: false };
   }
 
@@ -248,7 +256,12 @@ export class RobotSim {
         pitch = -0.34;
         roll = 0.13;
         yaw = 0.06;
-        bob = Math.sin(t * 1.15) * 0.016;
+        bob = Math.sin(t * SLEEP_BREATH) * 0.016;
+        /* the bob falling is the out-breath */
+        if (Math.cos(t * SLEEP_BREATH) < 0 !== this.exhaling) {
+          this.exhaling = !this.exhaling;
+          this.cues.push({ type: 'breath', out: this.exhaling });
+        }
         freq = 0.55;
         damping = 0.9;
         if (t > this.nextNod) {
@@ -293,6 +306,7 @@ export class RobotSim {
           squashTarget = ap < 0.5 ? -0.05 : 0;
         } else if (!j.landed) {
           j.landed = true;
+          this.cues.push({ type: 'land' });
           this.squash.v += 3.2;
           this.antX.v += (rand() < 0.5 ? -1 : 1) * (2.5 + rand() * 2);
           this.antZ.v += 3.5;
