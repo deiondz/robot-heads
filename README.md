@@ -100,9 +100,9 @@ Its motion is not part of that box. Hops, the antenna's glow and the floor's sha
   | `working` | a tick per progress segment, a chime as the bar fills |
   | `happy` | a bright pep on each bounce |
   | `error` | a buzz with each shake of the head |
-  | `sleeping` | a low hum, looped, swelling with each breath |
+  | `sleeping` | a cat's purr, looped, swelling with each breath |
 
-  A glitch plays on every state switch, a power-down and power-up as it falls asleep and wakes, and a hop and a landing whenever it jumps. The sounds are CC0, by [Kenney](https://kenney.nl) by way of [soundcn](https://soundcn.xyz), and load only when a head first turns sound on, so the package costs nothing extra without it. A paused head is quiet, and browsers keep audio silent until the user first interacts with the page.
+  A glitch plays on every state switch, a power-down and power-up as it falls asleep and wakes, and a hop and a landing whenever it jumps. The sounds are CC0: the effects by [Kenney](https://kenney.nl) by way of [soundcn](https://soundcn.xyz), the purr ["purring.m4a" by anchicheng98](https://freesound.org/people/anchicheng98/sounds/509949/) on Freesound. They load only when a head first turns sound on, and the purr only when one first falls asleep, so the package costs nothing extra without them. A paused head is quiet, and browsers keep audio silent until the user first interacts with the page.
 
   Set the volume, or swap or silence any sound with a URL or `false`:
 

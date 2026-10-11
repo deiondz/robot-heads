@@ -10,7 +10,7 @@ interface Voice {
   volume: number;
 }
 
-const BUILT_IN: Record<RobotHeadSound, Voice> = {
+const BUILT_IN: Record<Exclude<RobotHeadSound, 'sleeping'>, Voice> = {
   idle: { src: assets.tick, volume: 0.12 },
   thinking: { src: assets.question, volume: 0.35 },
   searching: { src: assets.scroll, volume: 0.2 },
@@ -19,7 +19,6 @@ const BUILT_IN: Record<RobotHeadSound, Voice> = {
   working: { src: assets.tickSoft, volume: 0.12 },
   happy: { src: assets.pep, volume: 0.3 },
   error: { src: assets.errorBuzz, volume: 0.4 },
-  sleeping: { src: assets.computerNoise, volume: 0.3 },
   hop: { src: assets.jump, volume: 0.5 },
   land: { src: assets.drop, volume: 0.25 },
   switch: { src: assets.glitch, volume: 0.35 },
@@ -29,6 +28,26 @@ const BUILT_IN: Record<RobotHeadSound, Voice> = {
 
 /* the bar filling in the working state, when its beat is the built-in tick */
 const FILLED: Voice = { src: assets.confirmation, volume: 0.3 };
+
+/* the purr, by default, while it sleeps: its own chunk, loaded on first need */
+const SLEEPING_VOLUME = 0.35;
+let purr: string | null = null;
+let purrLoading = false;
+
+function builtInPurr(): string | null {
+  if (!purr && !purrLoading) {
+    purrLoading = true;
+    import('./purr').then(
+      (m) => {
+        purr = m.purr;
+      },
+      () => {
+        purrLoading = false;
+      }
+    );
+  }
+  return purr;
+}
 
 /* the sleeping loop's swell: quieter on the in-breath */
 const BREATH_IN = 0.6;
@@ -110,6 +129,11 @@ export class SoundPlayer {
   private voice(sound: RobotHeadSound): Voice | null {
     const swap = this.options.sounds?.[sound];
     if (swap === false) return null;
+    if (sound === 'sleeping') {
+      /* null while the purr loads; the loop starts on a later frame */
+      const src = swap || builtInPurr();
+      return src ? { src, volume: SLEEPING_VOLUME } : null;
+    }
     const built = BUILT_IN[sound];
     return swap ? { src: swap, volume: built.volume } : built;
   }
