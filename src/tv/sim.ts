@@ -41,6 +41,8 @@ interface Jump {
   spin: number;
   lean: number;
   air: number;
+  poked: boolean;
+  launched: boolean;
   landed: boolean;
 }
 
@@ -134,8 +136,7 @@ export class RobotSim {
 
   hop(height: number, spin: number, poked = false) {
     if (this.jump) return;
-    this.cues.push({ type: 'hop', poked });
-    this.jump = { age: 0, height, spin, lean: (this.random() - 0.5) * 0.3, air: 0.42 + height * 0.45, landed: false };
+    this.jump = { age: 0, height, spin, lean: (this.random() - 0.5) * 0.3, air: 0.42 + height * 0.45, poked, launched: false, landed: false };
   }
 
   /* the rhythm each state keeps, as the screen shows it: a cue per beat */
@@ -353,6 +354,10 @@ export class RobotSim {
       } else {
         const ap = (j.age - CROUCH) / j.air;
         if (ap < 1) {
+          if (!j.launched) {
+            j.launched = true;
+            this.cues.push({ type: 'hop', poked: j.poked, height: j.height, air: j.air });
+          }
           if (ap < 0.06 && this.squash.x > 0.05) {
             /* leaving the ground: spring up into a stretch, the antenna lagging */
             this.squash.v = -2.6;

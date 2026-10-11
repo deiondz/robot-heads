@@ -13,8 +13,9 @@ export type RobotHeadState =
   | 'sleeping';
 
 /**
- * A moment in the animation, handed to `onCue`: a state switch, a hop
- * (`poked` when a click set it off), a landing, a sleeping head's breath
+ * A moment in the animation, handed to `onCue`: a state switch, a hop as
+ * it leaves the ground (`poked` when a click set it off; `height` in head
+ * heights, `air` the seconds until it lands), a landing, a sleeping head's breath
  * turning over (`out` on the out-breath, as the head sinks), or a beat of
  * the rhythm a state keeps for as long as it lasts: idle blinks, thinking
  * tilts, each pass of the search beam, listening nods, speaking syllables,
@@ -22,7 +23,7 @@ export type RobotHeadState =
  */
 export type RobotHeadCue =
   | { type: 'state'; state: RobotHeadState; previous: RobotHeadState }
-  | { type: 'hop'; poked: boolean }
+  | { type: 'hop'; poked: boolean; height: number; air: number }
   | { type: 'land' }
   | { type: 'breath'; out: boolean }
   | { type: 'beat'; state: RobotHeadState; accent: boolean };

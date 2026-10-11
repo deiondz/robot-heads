@@ -63,6 +63,8 @@ const SWATCHES: Record<keyof Colors, Array<[string, string]>> = {
 
 const ROW_LABELS: Record<keyof Colors, string> = { color: 'Shell', trimColor: 'Trim', screenColor: 'Screen' };
 const SPEEDS = [0.5, 1, 1.5, 2];
+/* the robot's sound: off, or on at a volume */
+const VOLUMES = [0, 0.25, 0.5, 1];
 
 const title = (s: string) => s[0].toUpperCase() + s.slice(1);
 
@@ -166,13 +168,14 @@ function ThemeToggle({ theme, onToggle }: { theme: Theme; onToggle: () => void }
   );
 }
 
-/* cuelume doesn't remember the setting, so the playground does */
+/* the controls' own clicks, off until turned on; cuelume doesn't
+   remember the setting, so the playground does */
 function useSound() {
   const [on, setOn] = useState(() => {
     try {
-      return localStorage.getItem('robot-heads-sound') !== 'off';
+      return localStorage.getItem('robot-heads-sound') === 'on';
     } catch {
-      return true;
+      return false;
     }
   });
   useEffect(() => {
@@ -191,7 +194,7 @@ function useSound() {
 
 function SoundToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
-    <button className="theme" data-cuelume-toggle onClick={onToggle} aria-pressed={on} aria-label="Sound effects" title={on ? 'Mute sounds' : 'Unmute sounds'}>
+    <button className="theme" data-cuelume-toggle onClick={onToggle} aria-pressed={on} aria-label="Interface sounds" title={on ? 'Mute interface sounds' : 'Unmute interface sounds'}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <path d="M11 5 6 9H3v6h3l5 4V5Z" />
         {on ? <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" /> : <path d="m16 9 6 6M22 9l-6 6" />}
@@ -206,9 +209,12 @@ interface PropLine {
   name: string;
   value: string | number | boolean;
   on: boolean;
+  /* a string that is code, like an object, rather than text */
+  expr?: boolean;
 }
 
-const propText = (l: PropLine) => (typeof l.value === 'string' ? `${l.name}="${l.value}"` : `${l.name}={${l.value}}`);
+const quoted = (l: PropLine) => typeof l.value === 'string' && !l.expr;
+const propText = (l: PropLine) => (quoted(l) ? `${l.name}="${l.value}"` : `${l.name}={${l.value}}`);
 
 /* one prop, coloured like GitHub's own theme */
 function PropTokens({ line }: { line: PropLine }) {
@@ -216,7 +222,7 @@ function PropTokens({ line }: { line: PropLine }) {
     <>
       <span className="tok-attr">{line.name}</span>
       <span className="tok-punct">=</span>
-      {typeof line.value === 'string' ? (
+      {quoted(line) ? (
         <span className="tok-string">"{line.value}"</span>
       ) : (
         <>
@@ -279,7 +285,10 @@ export default function App() {
   const [paused, setPaused] = useState(q.has('paused'));
   const [copied, copy] = useCopy();
   const [theme, toggleTheme] = useTheme();
-  const [sound, toggleSound] = useSound();
+  const [uiSound, toggleUiSound] = useSound();
+  /* the robot's own sound: off, as the component's is, until asked for */
+  const [volume, setVolume] = useState(0);
+  const sound = volume > 0;
   const size = useStageSize();
   const setShape = (s: RobotHeadShape) => {
     setShapeState(s);
@@ -287,7 +296,7 @@ export default function App() {
     u.searchParams.set('shape', s);
     history.replaceState(null, '', u);
   };
-  const changed = colors.color !== DEFAULTS.color || colors.trimColor !== DEFAULTS.trimColor || colors.screenColor !== DEFAULTS.screenColor || speed !== 1 || paused || !antenna;
+  const changed = colors.color !== DEFAULTS.color || colors.trimColor !== DEFAULTS.trimColor || colors.screenColor !== DEFAULTS.screenColor || speed !== 1 || paused || !antenna || sound;
   const lines: PropLine[] = [
     { key: 'shape', name: 'shape', value: shape, on: true },
     { key: 'state', name: 'state', value: state, on: true },
@@ -296,7 +305,7 @@ export default function App() {
     { key: 'screenColor', name: 'screenColor', value: colors.screenColor, on: colors.screenColor !== DEFAULTS.screenColor },
     { key: 'speed', name: 'speed', value: speed, on: speed !== 1 },
     { key: 'antenna', name: 'antenna', value: antenna, on: !antenna },
-    { key: 'sound', name: 'sound', value: true, on: sound },
+    { key: 'sound', name: 'sound', value: volume === 1 ? true : `{ volume: ${volume} }`, expr: volume !== 1, on: sound },
   ];
   const snippet = `<RobotHead\n${lines.filter((l) => l.on).map((l) => `  ${propText(l)}\n`).join('')}/>`;
 
@@ -324,13 +333,13 @@ export default function App() {
               <path fill="currentColor" d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5c.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34c-.46-1.16-1.11-1.47-1.11-1.47c-.91-.62.07-.6.07-.6c1 .07 1.53 1.03 1.53 1.03c.87 1.52 2.34 1.07 2.91.83c.09-.65.35-1.09.63-1.34c-2.22-.25-4.55-1.11-4.55-4.92c0-1.11.38-2 1.03-2.71c-.1-.25-.45-1.29.1-2.64c0 0 .84-.27 2.75 1.02c.79-.22 1.65-.33 2.5-.33s1.71.11 2.5.33c1.91-1.29 2.75-1.02 2.75-1.02c.55 1.35.2 2.39.1 2.64c.65.71 1.03 1.6 1.03 2.71c0 3.82-2.34 4.66-4.57 4.91c.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2" />
             </svg>
           </a>
-          <SoundToggle on={sound} onToggle={toggleSound} />
+          <SoundToggle on={uiSound} onToggle={toggleUiSound} />
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
       </header>
 
       <main className="stage" aria-label="Preview">
-        <RobotHead shape={shape} state={state} size={size} paused={paused} speed={speed} antenna={antenna} sound={sound} {...colors} />
+        <RobotHead shape={shape} state={state} size={size} paused={paused} speed={speed} antenna={antenna} sound={sound && { volume }} {...colors} />
         <div className="caption">
           <h1 className="font-bold">{title(state)}</h1>
           <p>{stateHints[state]}</p>
@@ -371,6 +380,19 @@ export default function App() {
 
         <div className="control">
           <div className="control-head">
+            <span className="control-label">Sound</span>
+          </div>
+          <div className="segments" role="group" aria-label="Sound">
+            {VOLUMES.map((v) => (
+              <button key={v} className="segment" data-cuelume-select aria-pressed={v === volume} onClick={() => setVolume(v)}>
+                {v ? `${v * 100}%` : 'Off'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="control">
+          <div className="control-head">
             <span className="control-label">Usage</span>
             <span className="control-actions">
               <button
@@ -383,6 +405,7 @@ export default function App() {
                   setSpeed(1);
                   setAntenna(true);
                   setPaused(false);
+                  setVolume(0);
                 }}
               >
                 Reset

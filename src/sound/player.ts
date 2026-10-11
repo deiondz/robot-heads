@@ -10,16 +10,14 @@ interface Voice {
   volume: number;
 }
 
-const BUILT_IN: Record<Exclude<RobotHeadSound, 'sleeping'>, Voice> = {
+const BUILT_IN: Record<Exclude<RobotHeadSound, 'sleeping' | 'searching' | 'hop'>, Voice> = {
   idle: { src: assets.tick, volume: 0.12 },
   thinking: { src: assets.question, volume: 0.35 },
-  searching: { src: assets.scroll, volume: 0.2 },
   listening: { src: assets.maximize, volume: 0.3 },
   speaking: { src: assets.pluck, volume: 0.3 },
   working: { src: assets.tickSoft, volume: 0.12 },
   happy: { src: assets.pep, volume: 0.3 },
   error: { src: assets.errorBuzz, volume: 0.4 },
-  hop: { src: assets.jump, volume: 0.5 },
   land: { src: assets.drop, volume: 0.25 },
   switch: { src: assets.glitch, volume: 0.35 },
   asleep: { src: assets.phaserDown, volume: 0.45 },
@@ -28,6 +26,12 @@ const BUILT_IN: Record<Exclude<RobotHeadSound, 'sleeping'>, Voice> = {
 
 /* the bar filling in the working state, when its beat is the built-in tick */
 const FILLED: Voice = { src: assets.confirmation, volume: 0.3 };
+
+/* searching's beat, by default: no file but a chirp, made fresh each pass */
+const SEARCHING_VOLUME = 0.2;
+
+/* a hop, by default: no file but a spring let go, shaped by the jump itself */
+const HOP_VOLUME = 0.3;
 
 /* the purr, by default, while it sleeps: its own chunk, loaded on first need */
 const SLEEPING_VOLUME = 0.35;
@@ -134,6 +138,8 @@ export class SoundPlayer {
       const src = swap || builtInPurr();
       return src ? { src, volume: SLEEPING_VOLUME } : null;
     }
+    if (sound === 'searching') return swap ? { src: swap, volume: SEARCHING_VOLUME } : null;
+    if (sound === 'hop') return swap ? { src: swap, volume: HOP_VOLUME } : null;
     const built = BUILT_IN[sound];
     return swap ? { src: swap, volume: built.volume } : built;
   }
@@ -155,6 +161,81 @@ export class SoundPlayer {
     source.start();
   }
 
+  /* searching's built-in beat: a curious little "bweep?" as the head peeks
+     one way, a lower "bwoop?" the other, never quite the same twice */
+  private peek = false;
+
+  private chirp() {
+    const ctx = context();
+    if (!ctx || ctx.state !== 'running') return;
+    this.peek = !this.peek;
+    const base = (this.peek ? 820 : 660) * (0.96 + Math.random() * 0.08);
+    const gain = SEARCHING_VOLUME * this.volume;
+    const now = ctx.currentTime;
+    /* a quick rise, then a higher blip on top: the question in it */
+    const notes: [start: number, from: number, to: number, length: number, level: number][] = [
+      [0, base, base * 1.5, 0.09, 1],
+      [0.1, base * 1.6, base * 2, 0.06, 0.6],
+    ];
+    for (const [start, from, to, length, level] of notes) {
+      const t = now + start;
+      const osc = new OscillatorNode(ctx, { type: 'sine', frequency: from });
+      osc.frequency.setValueAtTime(from, t);
+      osc.frequency.exponentialRampToValueAtTime(to, t + length);
+      const env = new GainNode(ctx, { gain: 0 });
+      env.gain.setValueAtTime(0, t);
+      env.gain.linearRampToValueAtTime(gain * level, t + 0.008);
+      env.gain.exponentialRampToValueAtTime(0.0001, t + length);
+      osc.connect(env).connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + length + 0.02);
+    }
+  }
+
+  /* the built-in hop: a "boing" that rises as the head does, higher for a
+     higher jump, gone quiet by the top of it so the landing has the fall;
+     a wobble on it like the antenna's, whipping at the take-off and settling */
+  private boing(height: number, air: number, scale: number) {
+    const ctx = context();
+    if (!ctx || ctx.state !== 'running') return;
+    const t = ctx.currentTime;
+    const rise = air / 2;
+    const from = 300 * (0.95 + Math.random() * 0.1);
+    const to = from * (1.6 + height * 4);
+    const gain = HOP_VOLUME * scale * this.volume;
+
+    const wobble = new OscillatorNode(ctx, { type: 'sine', frequency: 16 });
+    const depth = new GainNode(ctx, { gain: from * 0.22 });
+    depth.gain.setValueAtTime(from * 0.22, t);
+    depth.gain.exponentialRampToValueAtTime(1, t + rise * 0.8);
+    wobble.connect(depth);
+
+    const env = new GainNode(ctx, { gain: 0 });
+    env.gain.setValueAtTime(0, t);
+    env.gain.linearRampToValueAtTime(gain, t + 0.012);
+    env.gain.exponentialRampToValueAtTime(0.0001, t + rise * 1.1);
+    env.connect(ctx.destination);
+
+    /* a round tone, and an octave over it, quieter, for a little twang */
+    const voices = [
+      { type: 'sine' as const, mult: 1, level: 1 },
+      { type: 'triangle' as const, mult: 2, level: 0.18 },
+    ];
+    const end = t + rise * 1.1 + 0.02;
+    for (const { type, mult, level } of voices) {
+      const osc = new OscillatorNode(ctx, { type, frequency: from * mult });
+      osc.frequency.setValueAtTime(from * mult, t);
+      osc.frequency.exponentialRampToValueAtTime(to * mult, t + rise);
+      const g = new GainNode(ctx, { gain: level });
+      depth.connect(osc.frequency);
+      osc.connect(g).connect(env);
+      osc.start(t);
+      osc.stop(end);
+    }
+    wobble.start(t);
+    wobble.stop(end);
+  }
+
   cue(cue: RobotHeadCue, state: RobotHeadState) {
     switch (cue.type) {
       case 'state':
@@ -165,7 +246,12 @@ export class SoundPlayer {
       case 'hop':
         /* happy's beat is its bounce; elsewhere a hop it does itself is quieter than a click's */
         if (state === 'happy') this.play(this.voice('happy'));
-        else this.play(this.voice('hop'), cue.poked ? 1 : 0.4);
+        else {
+          const scale = cue.poked ? 1 : 0.4;
+          const swap = this.options.sounds?.hop;
+          if (swap === undefined) this.boing(cue.height, cue.air, scale);
+          else this.play(this.voice('hop'), scale);
+        }
         break;
       case 'land':
         this.play(this.voice('land'));
@@ -173,6 +259,10 @@ export class SoundPlayer {
       case 'beat': {
         if (cue.state === 'working' && cue.accent && !this.options.sounds?.working) {
           this.play(FILLED);
+          break;
+        }
+        if (cue.state === 'searching' && this.options.sounds?.searching === undefined) {
+          this.chirp();
           break;
         }
         /* speech: each syllable pitched a little differently, stressed ones louder and higher */

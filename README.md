@@ -88,13 +88,13 @@ Its motion is not part of that box. Hops, the antenna's glow and the floor's sha
 
 - **Pointer play.** With `interactive` on (the default), the head and eyes follow a nearby pointer, and a click makes it hop with a full spin and a happy face.
 - **Small sizes.** For avatars in a list, `antenna={false}` drops the antenna's stem and its light, keeping the knob on top, so the head itself fills more of the box (the square, circle and hexagon grow; the wide rectangle is already as big as its width allows).
-- **Sound.** `sound` plays effects in time with the animation, each state keeping a beat for as long as it lasts:
+- **Sound.** Off by default. `sound` plays effects in time with the animation, each state keeping a beat for as long as it lasts:
 
   | State | Sound |
   |---|---|
   | `idle` | a soft tick on each blink |
   | `thinking` | a questioning chime each time it tilts its head |
-  | `searching` | a sweep with each pass of the beam |
+  | `searching` | a curious chirp with each pass of the beam, higher one way than the other |
   | `listening` | a rising blip as it nods at the end of each phrase |
   | `speaking` | babble, a pitched pluck per syllable, stressed ones louder |
   | `working` | a tick per progress segment, a chime as the bar fills |
@@ -102,7 +102,7 @@ Its motion is not part of that box. Hops, the antenna's glow and the floor's sha
   | `error` | a buzz with each shake of the head |
   | `sleeping` | a cat's purr, looped, swelling with each breath |
 
-  A glitch plays on every state switch, a power-down and power-up as it falls asleep and wakes, and a hop and a landing whenever it jumps. The sounds are CC0: the effects by [Kenney](https://kenney.nl) by way of [soundcn](https://soundcn.xyz), the purr ["purring.m4a" by anchicheng98](https://freesound.org/people/anchicheng98/sounds/509949/) on Freesound. They load only when a head first turns sound on, and the purr only when one first falls asleep, so the package costs nothing extra without them. A paused head is quiet, and browsers keep audio silent until the user first interacts with the page.
+  A glitch plays on every state switch, a power-down and power-up as it falls asleep and wakes, and a springy boing whenever it jumps, rising as it does, then a landing. The sounds are CC0: the effects by [Kenney](https://kenney.nl) by way of [soundcn](https://soundcn.xyz), the purr ["purring.m4a" by anchicheng98](https://freesound.org/people/anchicheng98/sounds/509949/) on Freesound. They load only when a head first turns sound on, and the purr only when one first falls asleep, so the package costs nothing extra without them. A paused head is quiet, and browsers keep audio silent until the user first interacts with the page.
 
   Set the volume, or swap or silence any sound with a URL or `false`:
 
