@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { play, setEnabled } from 'cuelume';
-import { cue, purr, setSfxEnabled } from './sfx';
-import { RobotHead, robotHeadShapes, robotHeadStates, type RobotHeadShape, type RobotHeadState } from 'robot-heads';
+import { RobotHead, type RobotHeadSoundOptions, robotHeadShapes, robotHeadStates, type RobotHeadShape, type RobotHeadState } from 'robot-heads';
 
 /* ?shape=circle&state=thinking&paused for screenshots */
 const q = new URLSearchParams(location.search);
@@ -61,6 +60,9 @@ const SWATCHES: Record<keyof Colors, Array<[string, string]>> = {
     ['Neon', '#ff8fd0'],
   ],
 };
+
+/* the built-in sounds, with a real cat's purr for sleeping (Pixabay, see the README) */
+const SOUND: RobotHeadSoundOptions = { sounds: { sleeping: '/sfx/cat-purring.mp3' } };
 
 const ROW_LABELS: Record<keyof Colors, string> = { color: 'Shell', trimColor: 'Trim', screenColor: 'Screen' };
 const SPEEDS = [0.5, 1, 1.5, 2];
@@ -178,7 +180,6 @@ function useSound() {
   });
   useEffect(() => {
     setEnabled(on);
-    setSfxEnabled(on);
   }, [on]);
   const toggle = () => {
     setOn(!on);
@@ -283,11 +284,6 @@ export default function App() {
   const [theme, toggleTheme] = useTheme();
   const [sound, toggleSound] = useSound();
   const size = useStageSize();
-  /* the purr runs while the stage head sleeps; its breath cues swell it */
-  useEffect(() => {
-    if (sound && state === 'sleeping' && !paused) purr.start();
-    else purr.stop();
-  }, [sound, state, paused]);
   const setShape = (s: RobotHeadShape) => {
     setShapeState(s);
     const u = new URL(location.href);
@@ -303,6 +299,7 @@ export default function App() {
     { key: 'screenColor', name: 'screenColor', value: colors.screenColor, on: colors.screenColor !== DEFAULTS.screenColor },
     { key: 'speed', name: 'speed', value: speed, on: speed !== 1 },
     { key: 'antenna', name: 'antenna', value: antenna, on: !antenna },
+    { key: 'sound', name: 'sound', value: true, on: sound },
   ];
   const snippet = `<RobotHead\n${lines.filter((l) => l.on).map((l) => `  ${propText(l)}\n`).join('')}/>`;
 
@@ -336,7 +333,7 @@ export default function App() {
       </header>
 
       <main className="stage" aria-label="Preview">
-        <RobotHead shape={shape} state={state} size={size} paused={paused} speed={speed} antenna={antenna} onCue={cue} {...colors} />
+        <RobotHead shape={shape} state={state} size={size} paused={paused} speed={speed} antenna={antenna} sound={sound && SOUND} {...colors} />
         <div className="caption">
           <h1 className="font-bold">{title(state)}</h1>
           <p>{stateHints[state]}</p>

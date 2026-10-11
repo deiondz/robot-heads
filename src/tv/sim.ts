@@ -99,6 +99,9 @@ export class RobotSim {
   private reactUntil = -1;
   private nextNod = 2.5;
   private exhaling = false;
+  /* the state's beat counter, so each beat cues once; -1 cues the first at once */
+  private lastBeat = -1;
+  private flips = 0;
 
   constructor(seed: number, state: RobotHeadState) {
     this.random = rng(seed);
@@ -113,6 +116,7 @@ export class RobotSim {
     this.cues.push({ type: 'state', state: s, previous: this.state });
     this.state = s;
     this.since = 0;
+    this.lastBeat = -1;
     this.nextLook = 0;
     this.nextHop = this.time + (s === 'happy' ? 0.2 : 3 + this.random() * 4);
     if (s === 'happy') this.hop(0.22, 1);
@@ -128,6 +132,46 @@ export class RobotSim {
     if (this.jump) return;
     this.cues.push({ type: 'hop', poked });
     this.jump = { age: 0, height, spin, lean: (this.random() - 0.5) * 0.3, air: 0.42 + height * 0.45, landed: false };
+  }
+
+  /* the rhythm each state keeps, as the screen shows it: a cue per beat */
+  private beats() {
+    const s = this.since;
+    let beat = this.lastBeat;
+    let accent = false;
+    switch (this.state) {
+      case 'thinking':
+      case 'listening':
+        /* a tilt to the other side; a nod */
+        beat = this.flips;
+        break;
+      case 'searching':
+        /* each pass of the beam (its face draws it at sin(s·1.6 + 0.4));
+           it enters mid-pass, so the first beat waits for it to turn */
+        beat = Math.floor((s * 1.6 + 0.4 + Math.PI / 2) / Math.PI);
+        if (this.lastBeat < 0) this.lastBeat = beat;
+        break;
+      case 'speaking': {
+        /* syllables, while the mouth's phrase envelope is open */
+        const env = Math.sin(s * 2.1) * 0.5 + Math.sin(s * 3.7 + 1) * 0.5;
+        const syllable = Math.floor(s * 5);
+        if (env < 0.25) this.lastBeat = syllable;
+        beat = syllable;
+        break;
+      }
+      case 'working':
+        /* a segment of the progress bar; accented as it fills */
+        beat = Math.floor((s / 2.6) * 12);
+        accent = beat > 0 && beat % 12 === 0;
+        break;
+      case 'error':
+        /* a shake of the head */
+        beat = Math.floor(s / 2.4);
+        break;
+    }
+    if (beat === this.lastBeat) return;
+    this.lastBeat = beat;
+    this.cues.push({ type: 'beat', state: this.state, accent });
   }
 
   update(dt: number) {
@@ -187,6 +231,7 @@ export class RobotSim {
       case 'thinking': {
         if (t > this.nextSide) {
           this.face.side = -this.face.side;
+          this.flips++;
           this.nextSide = t + 3 + rand() * 2;
         }
         const s = this.face.side;
@@ -213,6 +258,7 @@ export class RobotSim {
         roll = 0.17;
         if (t > this.nextNod) {
           this.pitch.v -= 0.9;
+          this.flips++;
           this.nextNod = t + 2 + rand() * 2.5;
         }
         break;
@@ -245,7 +291,7 @@ export class RobotSim {
         break;
       case 'error': {
         /* a shake of the head every couple of seconds */
-        const c = (t % 2.4) / 0.7;
+        const c = (this.since % 2.4) / 0.7;
         shake = c < 1 ? Math.sin(c * Math.PI * 7) * 0.22 * (1 - c) : 0;
         pitch = -0.06;
         roll = -0.05;
@@ -317,9 +363,12 @@ export class RobotSim {
     }
     this.squash.step(squashTarget, dt, 3.2, 0.32);
 
+    this.beats();
+
     /* blinks */
     if (t > this.nextBlink) {
       this.blinkAge = 0;
+      if (this.state === 'idle') this.cues.push({ type: 'beat', state: 'idle', accent: false });
       this.nextBlink = t + 2.2 + rand() * 3.5;
       if (rand() < 0.2) this.nextBlink = t + 0.35;
     }
