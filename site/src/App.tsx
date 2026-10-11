@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { play, setEnabled } from 'cuelume';
+import { cue, purr, setSfxEnabled } from './sfx';
 import { RobotHead, robotHeadShapes, robotHeadStates, type RobotHeadShape, type RobotHeadState } from 'robot-heads';
 
 /* ?shape=circle&state=thinking&paused for screenshots */
@@ -177,6 +178,7 @@ function useSound() {
   });
   useEffect(() => {
     setEnabled(on);
+    setSfxEnabled(on);
   }, [on]);
   const toggle = () => {
     setOn(!on);
@@ -281,6 +283,11 @@ export default function App() {
   const [theme, toggleTheme] = useTheme();
   const [sound, toggleSound] = useSound();
   const size = useStageSize();
+  /* the purr runs while the stage head sleeps; its breath cues swell it */
+  useEffect(() => {
+    if (sound && state === 'sleeping' && !paused) purr.start();
+    else purr.stop();
+  }, [sound, state, paused]);
   const setShape = (s: RobotHeadShape) => {
     setShapeState(s);
     const u = new URL(location.href);
@@ -329,7 +336,7 @@ export default function App() {
       </header>
 
       <main className="stage" aria-label="Preview">
-        <RobotHead shape={shape} state={state} size={size} paused={paused} speed={speed} antenna={antenna} {...colors} />
+        <RobotHead shape={shape} state={state} size={size} paused={paused} speed={speed} antenna={antenna} onCue={cue} {...colors} />
         <div className="caption">
           <h1 className="font-bold">{title(state)}</h1>
           <p>{stateHints[state]}</p>

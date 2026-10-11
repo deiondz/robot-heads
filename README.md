@@ -70,6 +70,7 @@ The list is exported as `robotHeadStates`.
   interactive             // follow the pointer, hop and spin on a click
   antenna                 // the antenna's stem and light; off, the knob stays
   floorShadow             // the soft shadow under the head
+  onCue={(cue) => {}}     // moments in the animation, for sound effects (below)
   seed={0.3}              // 0–1, desyncs blinks and glances in a row of heads
 />
 ```
@@ -86,6 +87,20 @@ Its motion is not part of that box. Hops, the antenna's glow and the floor's sha
 
 - **Pointer play.** With `interactive` on (the default), the head and eyes follow a nearby pointer, and a click makes it hop with a full spin and a happy face.
 - **Small sizes.** For avatars in a list, `antenna={false}` drops the antenna's stem and its light, keeping the knob on top, so the head itself fills more of the box (the square, circle and hexagon grow; the wide rectangle is already as big as its width allows).
+- **Cues for sound.** The package plays no audio, but `onCue` reports each moment worth hearing, on the frame it happens: a state switch, a hop (`poked` when a click set it off), a landing, and a sleeping head's breath turning over. Map them to your own sounds:
+
+  ```tsx
+  <RobotHead
+    state={state}
+    onCue={(cue) => {
+      if (cue.type === 'hop') hopSound.play();
+      if (cue.type === 'state' && cue.state === 'sleeping') powerDown.play();
+      if (cue.type === 'breath') purr.volume = cue.out ? 0.35 : 0.18;
+    }}
+  />
+  ```
+
+  The playground does this with CC0 sounds from [soundcn](https://soundcn.xyz), and a sleeping purr, ["purring" by anchicheng98](https://pixabay.com/sound-effects/nature-purring-40709/), used under the [Pixabay Content License](https://pixabay.com/service/license-summary/) rather than this repo's MIT licence. Neither ships in the npm package.
 - **Reduced motion.** With `prefers-reduced-motion: reduce`, or `paused`, the still pose of the state is drawn instead of the animation.
 - **Accessible by default.** The canvas has `role="img"` and an `aria-label` naming the state ("Robot, thinking"); pass your own `aria-label` to override it.
 - **Cheap to run many.** Every head on the page shares one animation loop, which sleeps while the tab is hidden, and heads of the same shape and size share their baked textures.
